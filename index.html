@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>SmartPantry - Dispensa & Frigo AI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      display: none;
+    }
+    .custom-scroll {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* iOS safe areas */
+    .pb-safe {
+      padding-bottom: env(safe-area-inset-bottom, 1rem);
+    }
+    .pt-safe {
+      padding-top: env(safe-area-inset-top, 0.75rem);
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
+
+  <!-- APP CONTAINER -->
+  <div class="w-full max-w-md mx-auto min-h-screen flex flex-col bg-slate-950 relative shadow-2xl border-x border-slate-800">
+    
+    <!-- TOP BAR -->
+    <header class="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md px-5 pt-safe pb-3 border-b border-slate-800/80 flex items-center justify-between">
+      <div class="flex items-center space-x-2.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20">
+          <i class="fa-solid fa-leaf text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
+            SmartPantry <span class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">AI</span>
+          </h1>
+          <p class="text-xs text-slate-400 font-medium">Frigo & Dispensa Intelligente</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btnAiRecipes" class="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-800 shadow-sm active:scale-95 transition" title="Suggerisci Ricetta">
+          <i class="fa-solid fa-wand-magic-sparkles text-sm"></i>
+        </button>
+        <button id="btnManualAdd" class="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 shadow-sm active:scale-95 transition" title="Aggiungi Manualmente">
+          <i class="fa-solid fa-plus text-sm"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 overflow-y-auto custom-scroll px-4 py-4 pb-28 space-y-4">
+      
+      <!-- STATS OVERVIEW CARDS -->
+      <div class="grid grid-cols-3 gap-2.5">
+        <div class="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-3 flex flex-col justify-between">
+          <span class="text-xs text-slate-400 font-medium flex items-center gap-1">
+            <i class="fa-solid fa-box text-blue-400 text-[10px]"></i> Totali
+          </span>
+          <span id="statTotal" class="text-xl font-extrabold text-white mt-1">0</span>
+        </div>
+        <div class="bg-amber-950/20 border border-amber-500/20 rounded-2xl p-3 flex flex-col justify-between">
+          <span class="text-xs text-amber-400 font-medium flex items-center gap-1">
+            <i class="fa-solid fa-clock text-amber-400 text-[10px]"></i> In scadenza
+          </span>
+          <span id="statExpiring" class="text-xl font-extrabold text-amber-300 mt-1">0</span>
+        </div>
+        <div class="bg-rose-950/20 border border-rose-500/20 rounded-2xl p-3 flex flex-col justify-between">
+          <span class="text-xs text-rose-400 font-medium flex items-center gap-1">
+            <i class="fa-solid fa-triangle-exclamation text-rose-400 text-[10px]"></i> Scaduti
+          </span>
+          <span id="statExpired" class="text-xl font-extrabold text-rose-400 mt-1">0</span>
+        </div>
+      </div>
+
+      <!-- SCAN CALLOUT BANNER -->
+      <div class="relative overflow-hidden rounded-2xl p-4 bg-gradient-to-r from-emerald-600/20 via-teal-600/10 to-transparent border border-emerald-500/30">
+        <div class="flex items-start justify-between relative z-10">
+          <div class="space-y-1">
+            <div class="flex items-center gap-1.5 text-emerald-400 font-semibold text-xs tracking-wider uppercase">
+              <i class="fa-solid fa-bolt"></i> Scansione Rapida AI
+            </div>
+            <h3 class="text-sm font-bold text-slate-100">Scatta il prodotto & la data</h3>
+            <p class="text-xs text-slate-400 max-w-[210px] leading-relaxed">Gemini riconoscerà l'alimento e la scadenza in pochi secondi.</p>
+          </div>
+          <button id="btnQuickScan" class="px-3.5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/25 transition">
+            <i class="fa-solid fa-camera"></i> Scansiona
+          </button>
+        </div>
+      </div>
+
+      <!-- SEARCH & FILTERS -->
+      <div class="space-y-2.5">
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+          <input id="searchInput" type="text" placeholder="Cerca latte, pasta, yogurt..." 
+                 class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-8 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition">
+          <button id="btnClearSearch" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- CATEGORY BADGES -->
+        <div class="flex items-center gap-1.5 overflow-x-auto custom-scroll pb-1">
+          <button data-filter="all" class="filter-chip active px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-emerald-500 text-slate-950 transition">
+            Tutti
+          </button>
+          <button data-filter="expiring" class="filter-chip px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-700 transition">
+            ⚠️ Scadenze vicine
+          </button>
+          <button data-filter="frigo" class="filter-chip px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-700 transition">
+            🧊 Frigo
+          </button>
+          <button data-filter="dispensa" class="filter-chip px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-700 transition">
+            🥫 Dispensa
+          </button>
+          <button data-filter="freezer" class="filter-chip px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-700 transition">
+            ❄️ Freezer
+          </button>
+        </div>
+      </div>
+
+      <!-- ITEMS LIST -->
+      <div id="itemsContainer" class="space-y-2.5">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- EMPTY STATE -->
+      <div id="emptyState" class="hidden py-16 text-center space-y-3">
+        <div class="w-16 h-16 mx-auto rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600 text-2xl">
+          <i class="fa-solid fa-basket-shopping"></i>
+        </div>
+        <div>
+          <h4 class="text-sm font-semibold text-slate-300">Nessun prodotto trovato</h4>
+          <p class="text-xs text-slate-500 mt-1 max-w-[220px] mx-auto">Scatta una foto del tuo cibo o aggiungilo con il tasto +</p>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- BOTTOM FLOATING ACTION BAR -->
+    <div class="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 pb-safe bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent z-30 pointer-events-none">
+      <div class="flex items-center justify-center gap-3 pointer-events-auto">
+        <button id="btnFloatingCamera" class="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 active:scale-[0.98] text-slate-950 font-bold text-sm shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-camera text-base"></i> Scatta e Registra Cibo
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL: CAMERA SCANNER DUAL STEP -->
+  <div id="cameraModal" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md hidden flex flex-col justify-between max-w-md mx-auto">
+    <!-- Header -->
+    <div class="p-4 pt-safe flex items-center justify-between border-b border-slate-800/80">
+      <div>
+        <h3 id="scanStepTitle" class="text-base font-bold text-white flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 text-xs flex items-center justify-center font-extrabold">1</span>
+          Foto del Prodotto
+        </h3>
+        <p id="scanStepDesc" class="text-xs text-slate-400 mt-0.5">Inquadra la confezione o l'alimento</p>
+      </div>
+      <button id="btnCloseCameraModal" class="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white transition">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+    </div>
+
+    <!-- Viewfinder / Photos previews -->
+    <div class="relative flex-1 flex flex-col justify-center items-center p-4 overflow-hidden">
+      <!-- Live Video stream -->
+      <div id="videoWrapper" class="relative w-full aspect-[3/4] max-h-[58vh] bg-black rounded-3xl overflow-hidden border border-slate-800 shadow-2xl flex items-center justify-center">
+        <video id="liveVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+        
+        <!-- Smart Guides Overlay -->
+        <div id="scannerOverlay" class="absolute inset-6 border-2 border-dashed border-emerald-400/60 rounded-2xl pointer-events-none flex flex-col justify-between p-3 transition-colors duration-300">
+          <div class="flex justify-between items-center text-[11px] font-bold tracking-wider text-emerald-400 uppercase bg-slate-950/70 backdrop-blur-sm px-2 py-1 rounded-md self-center">
+            <span id="overlayBadgeText"><i class="fa-solid fa-box mr-1"></i> Centra il prodotto</span>
+          </div>
+          <div class="w-full text-center text-[10px] text-slate-300 bg-slate-950/70 backdrop-blur-sm px-2 py-1 rounded-md">
+            Luce chiara & testo a fuoco
+          </div>
+        </div>
+
+        <canvas id="captureCanvas" class="hidden"></canvas>
+      </div>
+
+      <!-- Thumbnails of taken photos -->
+      <div class="w-full flex items-center justify-center gap-3 mt-4">
+        <!-- Thumbnail 1: Product -->
+        <div id="thumbProductBox" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+          <div class="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-700">
+            <img id="thumbProductImg" class="w-full h-full object-cover hidden" alt="Prodotto">
+            <i id="thumbProductIcon" class="fa-solid fa-box text-slate-500 text-[10px]"></i>
+          </div>
+          <span class="text-[11px] font-medium text-slate-300">1. Alimento</span>
+          <i id="thumbProductCheck" class="fa-solid fa-circle-check text-emerald-400 text-xs hidden"></i>
+        </div>
+
+        <!-- Thumbnail 2: Expiration -->
+        <div id="thumbExpBox" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs opacity-50">
+          <div class="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-700">
+            <img id="thumbExpImg" class="w-full h-full object-cover hidden" alt="Scadenza">
+            <i id="thumbExpIcon" class="fa-solid fa-calendar text-slate-500 text-[10px]"></i>
+          </div>
+          <span class="text-[11px] font-medium text-slate-300">2. Scadenza</span>
+          <i id="thumbExpCheck" class="fa-solid fa-circle-check text-emerald-400 text-xs hidden"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Camera Controls Bottom -->
+    <div class="p-5 pb-safe bg-slate-950 border-t border-slate-800/80 space-y-3">
+      <div class="flex items-center justify-around">
+        <!-- Switch to file input/gallery fallback -->
+        <label class="p-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 cursor-pointer active:scale-95 transition flex items-center justify-center">
+          <i class="fa-solid fa-images text-lg"></i>
+          <input type="file" id="fileUploadInput" accept="image/*" class="hidden">
+        </label>
+
+        <!-- Shutter Capture Button -->
+        <button id="btnShutter" class="w-18 h-18 p-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/30 active:scale-90 transition">
+          <div class="w-14 h-14 rounded-full bg-slate-950 flex items-center justify-center">
+            <div class="w-11 h-11 rounded-full bg-white transition group-hover:scale-95"></div>
+          </div>
+        </button>
+
+        <!-- Skip Expiry photo if both visible on same photo -->
+        <button id="btnSkipExpiry" class="p-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 active:scale-95 transition flex flex-col items-center justify-center text-[10px] hidden font-medium">
+          <i class="fa-solid fa-forward-step text-sm mb-0.5"></i>
+          <span>Salta</span>
+        </button>
+        <div id="btnSkipPlaceholder" class="w-11"></div>
+      </div>
+
+      <div class="text-center">
+        <p class="text-[11px] text-slate-500">Se la data è già visibile nella prima foto, puoi analizzarla subito.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AI PROCESSING LOADING OVERLAY -->
+  <div id="aiLoadingModal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto">
+    <div class="relative w-24 h-24 mb-6">
+      <div class="absolute inset-0 rounded-full border-4 border-emerald-500/20 animate-ping"></div>
+      <div class="w-full h-full rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 text-3xl shadow-2xl shadow-emerald-500/40 animate-pulse">
+        <i class="fa-solid fa-microchip"></i>
+      </div>
+    </div>
+    <h3 class="text-lg font-bold text-white tracking-tight">Gemini Vision sta analizzando...</h3>
+    <p id="aiStatusText" class="text-xs text-slate-400 mt-2 max-w-xs leading-relaxed">
+      Lettura del nome del cibo, stima porzioni e decodifica della data di scadenza...
+    </p>
+    <div class="mt-6 flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
+      <i class="fa-solid fa-sparkles animate-spin"></i>
+      <span>Elaborazione neurale in corso</span>
+    </div>
+  </div>
+
+  <!-- MODAL: VERIFY & EDIT ITEM BEFORE SAVING -->
+  <div id="editItemModal" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md hidden flex flex-col justify-between max-w-md mx-auto">
+    <!-- Header -->
+    <div class="p-4 pt-safe flex items-center justify-between border-b border-slate-800">
+      <div>
+        <h3 id="modalFormTitle" class="text-base font-bold text-white">Conferma Dati Alimento</h3>
+        <p class="text-xs text-slate-400">Verifica o modifica prima del salvataggio</p>
+      </div>
+      <button id="btnCloseEditModal" class="p-2 rounded-xl bg-slate-900 text-slate-400 hover:text-white">
+        <i class="fa-solid fa-xmark text-base"></i>
+      </button>
+    </div>
+
+    <!-- Form Body -->
+    <div class="flex-1 overflow-y-auto custom-scroll p-4 space-y-4">
+      
+      <!-- Photos summary -->
+      <div class="flex gap-2.5">
+        <div id="formImg1Container" class="flex-1 aspect-video rounded-xl bg-slate-900 border border-slate-800 overflow-hidden relative">
+          <img id="formImg1" class="w-full h-full object-cover hidden" alt="Foto Prodotto">
+          <div id="formImg1Placeholder" class="w-full h-full flex flex-col items-center justify-center text-slate-600 text-xs">
+            <i class="fa-solid fa-camera mb-1"></i> Prodotto
+          </div>
+        </div>
+        <div id="formImg2Container" class="w-24 aspect-video rounded-xl bg-slate-900 border border-slate-800 overflow-hidden relative">
+          <img id="formImg2" class="w-full h-full object-cover hidden" alt="Foto Scadenza">
+          <div id="formImg2Placeholder" class="w-full h-full flex flex-col items-center justify-center text-slate-600 text-[10px]">
+            <i class="fa-solid fa-calendar mb-1"></i> Scadenza
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Fields -->
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Nome Prodotto</label>
+          <input id="inputItemName" type="text" placeholder="es. Latte Intero, Pasta Barilla..." 
+                 class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-white focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Data Scadenza</label>
+            <input id="inputItemDate" type="date" 
+                   class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Posizione</label>
+            <select id="inputItemCategory" 
+                    class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-emerald-500">
+              <option value="frigo">🧊 Frigorifero</option>
+              <option value="dispensa">🥫 Dispensa</option>
+              <option value="freezer">❄️ Freezer</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Quantità / Peso</label>
+            <input id="inputItemQuantity" type="text" placeholder="es. 1L, 500g, 4 pz" 
+                   class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Stato Confezione</label>
+            <select id="inputItemStatus" 
+                    class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-emerald-500">
+              <option value="sealed">Chiuso / Sigillato</option>
+              <option value="opened">Aperto</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Note & Consigli Conservazione</label>
+          <input id="inputItemNotes" type="text" placeholder="es. Consumare entro 3 gg dall'apertura" 
+                 class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-300 focus:outline-none focus:border-emerald-500">
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Save Button Footer -->
+    <div class="p-4 pb-safe bg-slate-950 border-t border-slate-800 flex gap-2.5">
+      <button id="btnDiscardItem" class="w-1/3 py-3 rounded-xl bg-slate-900 text-rose-400 hover:bg-slate-800 font-bold text-xs transition">
+        Annulla
+      </button>
+      <button id="btnSaveItem" class="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition">
+        Salva nella Dispensa
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: RECIPES AI SUGGESTIONS -->
+  <div id="recipeModal" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md hidden flex flex-col justify-between max-w-md mx-auto">
+    <div class="p-4 pt-safe flex items-center justify-between border-b border-slate-800">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm">
+          <i class="fa-solid fa-utensils"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-white">Chef Antispreco AI</h3>
+          <p class="text-xs text-slate-400">Idee veloci con i prodotti in scadenza</p>
+        </div>
+      </div>
+      <button id="btnCloseRecipeModal" class="p-2 rounded-xl bg-slate-900 text-slate-400 hover:text-white">
+        <i class="fa-solid fa-xmark text-base"></i>
+      </button>
+    </div>
+
+    <div id="recipeContentArea" class="flex-1 overflow-y-auto custom-scroll p-4 space-y-4">
+      <!-- Loading or list of recipes -->
+    </div>
+
+    <div class="p-4 pb-safe border-t border-slate-800">
+      <button id="btnRefreshRecipes" class="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition">
+        <i class="fa-solid fa-rotate"></i> Genera Altre Ricette
+      </button>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 -translate-y-4 flex items-center gap-2 bg-slate-900 border border-slate-700 text-white text-xs px-4 py-2.5 rounded-2xl shadow-2xl">
+    <i id="toastIcon" class="fa-solid fa-check text-emerald-400"></i>
+    <span id="toastMsg">Operazione completata</span>
+  </div>
+
+  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <script>
+    // --- STATE MANAGEMENT ---
+    let pantryItems = [];
+    let currentFilter = 'all';
+    let searchQuery = '';
+    
+    // Scan Flow State
+    let scanStep = 1; // 1: Product photo, 2: Expiration date photo
+    let productPhotoBase64 = null;
+    let expiryPhotoBase64 = null;
+    let cameraStream = null;
+    let editingItemId = null;
+
+    // Local Storage Key
+    const STORAGE_KEY = 'smart_pantry_items_v1';
+
+    // --- DOM REFERENCES ---
+    const itemsContainer = document.getElementById('itemsContainer');
+    const emptyState = document.getElementById('emptyState');
+    const searchInput = document.getElementById('searchInput');
+    const btnClearSearch = document.getElementById('btnClearSearch');
+    const filterButtons = document.querySelectorAll('.filter-chip');
+    
+    // Stats
+    const statTotal = document.getElementById('statTotal');
+    const statExpiring = document.getElementById('statExpiring');
+    const statExpired = document.getElementById('statExpired');
+
+    // Camera Modal
+    const cameraModal = document.getElementById('cameraModal');
+    const btnQuickScan = document.getElementById('btnQuickScan');
+    const btnFloatingCamera = document.getElementById('btnFloatingCamera');
+    const btnCloseCameraModal = document.getElementById('btnCloseCameraModal');
+    const liveVideo = document.getElementById('liveVideo');
+    const captureCanvas = document.getElementById('captureCanvas');
+    const btnShutter = document.getElementById('btnShutter');
+    const btnSkipExpiry = document.getElementById('btnSkipExpiry');
+    const btnSkipPlaceholder = document.getElementById('btnSkipPlaceholder');
+    const fileUploadInput = document.getElementById('fileUploadInput');
+    const scanStepTitle = document.getElementById('scanStepTitle');
+    const scanStepDesc = document.getElementById('scanStepDesc');
+    const overlayBadgeText = document.getElementById('overlayBadgeText');
+    const scannerOverlay = document.getElementById('scannerOverlay');
+
+    // Thumbnails in camera
+    const thumbProductBox = document.getElementById('thumbProductBox');
+    const thumbProductImg = document.getElementById('thumbProductImg');
+    const thumbProductIcon = document.getElementById('thumbProductIcon');
+    const thumbProductCheck = document.getElementById('thumbProductCheck');
+    const thumbExpBox = document.getElementById('thumbExpBox');
+    const thumbExpImg = document.getElementById('thumbExpImg');
+    const thumbExpIcon = document.getElementById('thumbExpIcon');
+    const thumbExpCheck = document.getElementById('thumbExpCheck');
+
+    // AI Loading Modal
+    const aiLoadingModal = document.getElementById('aiLoadingModal');
+    const aiStatusText = document.getElementById('aiStatusText');
+
+    // Form Modal
+    const editItemModal = document.getElementById('editItemModal');
+    const btnCloseEditModal = document.getElementById('btnCloseEditModal');
+    const btnDiscardItem = document.getElementById('btnDiscardItem');
+    const btnSaveItem = document.getElementById('btnSaveItem');
+    const modalFormTitle = document.getElementById('modalFormTitle');
+    const formImg1 = document.getElementById('formImg1');
+    const formImg1Placeholder = document.getElementById('formImg1Placeholder');
+    const formImg2 = document.getElementById('formImg2');
+    const formImg2Placeholder = document.getElementById('formImg2Placeholder');
+    const inputItemName = document.getElementById('inputItemName');
+    const inputItemDate = document.getElementById('inputItemDate');
+    const inputItemCategory = document.getElementById('inputItemCategory');
+    const inputItemQuantity = document.getElementById('inputItemQuantity');
+    const inputItemStatus = document.getElementById('inputItemStatus');
+    const inputItemNotes = document.getElementById('inputItemNotes');
+    const btnManualAdd = document.getElementById('btnManualAdd');
+
+    // Recipes Modal
+    const recipeModal = document.getElementById('recipeModal');
+    const btnAiRecipes = document.getElementById('btnAiRecipes');
+    const btnCloseRecipeModal = document.getElementById('btnCloseRecipeModal');
+    const btnRefreshRecipes = document.getElementById('btnRefreshRecipes');
+    const recipeContentArea = document.getElementById('recipeContentArea');
+
+    // --- INITIALIZATION ---
+    window.onload = () => {
+      loadPantryFromStorage();
+      setupEventListeners();
+      renderItems();
+      updateStats();
+    };
+
+    function setupEventListeners() {
+      // Filter clicks
+      filterButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          filterButtons.forEach(b => {
+            b.classList.remove('bg-emerald-500', 'text-slate-950');
+            b.classList.add('bg-slate-900', 'text-slate-300', 'border', 'border-slate-800');
+          });
+          btn.classList.remove('bg-slate-900', 'text-slate-300', 'border', 'border-slate-800');
+          btn.classList.add('bg-emerald-500', 'text-slate-950');
+          currentFilter = btn.dataset.filter;
+          renderItems();
+        });
+      });
+
+      // Search bar
+      searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value.toLowerCase().trim();
+        btnClearSearch.classList.toggle('hidden', searchQuery === '');
+        renderItems();
+      });
+
+      btnClearSearch.addEventListener('click', () => {
+        searchInput.value = '';
+        searchQuery = '';
+        btnClearSearch.classList.add('hidden');
+        renderItems();
+      });
+
+      // Camera triggers
+      btnQuickScan.addEventListener('click', openCameraScanner);
+      btnFloatingCamera.addEventListener('click', openCameraScanner);
+      btnCloseCameraModal.addEventListener('click', closeCameraScanner);
+      btnShutter.addEventListener('click', handleShutterClick);
+      fileUploadInput.addEventListener('change', handleFileUpload);
+      btnSkipExpiry.addEventListener('click', () => {
+        // Proceed to AI with only the first photo
+        processImagesWithAI(productPhotoBase64, null);
+      });
+
+      // Edit Form events
+      btnCloseEditModal.addEventListener('click', closeEditModal);
+      btnDiscardItem.addEventListener('click', closeEditModal);
+      btnSaveItem.addEventListener('click', handleSaveItem);
+      btnManualAdd.addEventListener('click', openManualAdd);
+
+      // Recipe events
+      btnAiRecipes.addEventListener('click', openRecipeModal);
+      btnCloseRecipeModal.addEventListener('click', () => recipeModal.classList.add('hidden'));
+      btnRefreshRecipes.addEventListener('click', generateAntiWasteRecipes);
+    }
+
+    // --- CAMERA ENGINE ---
+    async function openCameraScanner() {
+      scanStep = 1;
+      productPhotoBase64 = null;
+      expiryPhotoBase64 = null;
+      resetCameraUI();
+      cameraModal.classList.remove('hidden');
+
+      try {
+        const constraints = {
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        };
+        cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+        liveVideo.srcObject = cameraStream;
+      } catch (err) {
+        console.warn("Direct camera stream not supported or denied, prompting file picker:", err);
+        showToast("Accesso fotocamera non disponibile. Puoi caricare una foto dalla galleria.", "error");
+      }
+    }
+
+    function closeCameraScanner() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+      }
+      cameraModal.classList.add('hidden');
+    }
+
+    function resetCameraUI() {
+      scanStep = 1;
+      scanStepTitle.innerHTML = `<span class="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 text-xs flex items-center justify-center font-extrabold">1</span> Foto Alimento`;
+      scanStepDesc.innerText = "Inquadra bene la confezione o il prodotto";
+      overlayBadgeText.innerHTML = `<i class="fa-solid fa-box mr-1"></i> Centra il prodotto`;
+      scannerOverlay.className = "absolute inset-6 border-2 border-dashed border-emerald-400/60 rounded-2xl pointer-events-none flex flex-col justify-between p-3 transition-colors duration-300";
+
+      // Reset Thumbnails
+      thumbProductImg.classList.add('hidden');
+      thumbProductImg.src = '';
+      thumbProductIcon.classList.remove('hidden');
+      thumbProductCheck.classList.add('hidden');
+      thumbProductBox.classList.remove('opacity-50');
+
+      thumbExpImg.classList.add('hidden');
+      thumbExpImg.src = '';
+      thumbExpIcon.classList.remove('hidden');
+      thumbExpCheck.classList.add('hidden');
+      thumbExpBox.classList.add('opacity-50');
+
+      btnSkipExpiry.classList.add('hidden');
+      btnSkipPlaceholder.classList.remove('hidden');
+    }
+
+    function handleShutterClick() {
+      const capturedBase64 = captureFrame();
+      if (!capturedBase64) {
+        // Fallback: trigger file input
+        fileUploadInput.click();
+        return;
+      }
+
+      handlePhotoCaptured(capturedBase64);
+    }
+
+    function captureFrame() {
+      if (!liveVideo || !liveVideo.videoWidth) return null;
+      captureCanvas.width = liveVideo.videoWidth;
+      captureCanvas.height = liveVideo.videoHeight;
+      const ctx = captureCanvas.getContext('2d');
+      ctx.drawImage(liveVideo, 0, 0, captureCanvas.width, captureCanvas.height);
+      return captureCanvas.toDataURL('image/jpeg', 0.85);
+    }
+
+    function handleFileUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        handlePhotoCaptured(event.target.result);
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    }
+
+    function handlePhotoCaptured(dataUrl) {
+      if (scanStep === 1) {
+        productPhotoBase64 = dataUrl;
+        
+        // Update product thumbnail
+        thumbProductImg.src = dataUrl;
+        thumbProductImg.classList.remove('hidden');
+        thumbProductIcon.classList.add('hidden');
+        thumbProductCheck.classList.remove('hidden');
+
+        // Transition to Step 2: Expiration Date
+        scanStep = 2;
+        scanStepTitle.innerHTML = `<span class="w-6 h-6 rounded-full bg-amber-400 text-slate-950 text-xs flex items-center justify-center font-extrabold">2</span> Foto Data di Scadenza`;
+        scanStepDesc.innerText = "Inquadra la data di scadenza (es. 'Entro il gg/mm/aa')";
+        overlayBadgeText.innerHTML = `<i class="fa-solid fa-calendar mr-1"></i> Inquadra la data stampata`;
+        scannerOverlay.className = "absolute inset-6 border-2 border-dashed border-amber-400/80 rounded-2xl pointer-events-none flex flex-col justify-between p-3 transition-colors duration-300";
+
+        thumbExpBox.classList.remove('opacity-50');
+        btnSkipExpiry.classList.remove('hidden');
+        btnSkipPlaceholder.classList.add('hidden');
+
+        showToast("Prima foto salvata! Ora inquadra la scadenza.", "success");
+      } else if (scanStep === 2) {
+        expiryPhotoBase64 = dataUrl;
+        
+        thumbExpImg.src = dataUrl;
+        thumbExpImg.classList.remove('hidden');
+        thumbExpIcon.classList.add('hidden');
+        thumbExpCheck.classList.remove('hidden');
+
+        // Both photos ready! Trigger AI Analysis
+        closeCameraScanner();
+        processImagesWithAI(productPhotoBase64, expiryPhotoBase64);
+      }
+    }
+
+    // --- GEMINI AI VISION PIPELINE ---
+    async function processImagesWithAI(prodImg, expImg) {
+      aiLoadingModal.classList.remove('hidden');
+      aiStatusText.innerText = "Analisi visiva avanzata con Gemini 3 Flash...";
+
+      try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        
+        // Prepare contents parts
+        const parts = [
+          {
+            text: `Sei un esperto assistente per la gestione di frigo e dispensa. 
+Oggi è: ${todayStr}.
+Ti vengono fornite una o due foto:
+1. La foto principale del prodotto/alimento.
+2. (Opzionale) La foto ravvicinata dell'etichetta con la data di scadenza.
+
+Analizza attentamente le immagini ed estrai i dati nel seguente formato JSON rigoroso:
+- "name": Nome conciso e chiaro dell'alimento in italiano (es. "Yogurt Greco", "Latte Parzialmente Scremato", "Uova Fresche").
+- "category": Uno tra ["frigo", "dispensa", "freezer"].
+- "expiryDate": Data di scadenza in formato ISO "YYYY-MM-DD". Cerca scritte come "DA CONSUMARSI ENTRO", "EXP", "SCAD", "BBD". Se trovi solo mese/anno (es. 08/2027), imposta l'ultimo giorno di quel mese. Se la data non è visibile o leggibile, stima una scadenza logica e prudente partendo dalla data di oggi (${todayStr}) in base alla natura dell'alimento (es. latte fresco: +6 giorni, yogurt: +14 giorni, pasta secca: +1 anno).
+- "quantity": Quantità o peso stimato se visibile (es. "500g", "1L", "6 pezzi", o "1 conf").
+- "notes": Breve consiglio utile di conservazione in italiano (max 10 parole, es. "Conservare in frigo a +4°C dopo l'apertura").
+- "confidence": Un punteggio da 1 a 100 sulla sicurezza della data trovata.`
+          },
+          {
+            inlineData: {
+              mimeType: "image/jpeg",
+              data: prodImg.replace(/^data:image\/\w+;base64,/, "")
+            }
+          }
+        ];
+
+        if (expImg) {
+          parts.push({
+            inlineData: {
+              mimeType: "image/jpeg",
+              data: expImg.replace(/^data:image\/\w+;base64,/, "")
+            }
+          });
+        }
+
+        const payload = {
+          contents: [{ role: "user", parts: parts }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                name: { type: "STRING" },
+                category: { type: "STRING", enum: ["frigo", "dispensa", "freezer"] },
+                expiryDate: { type: "STRING" },
+                quantity: { type: "STRING" },
+                notes: { type: "STRING" },
+                confidence: { type: "NUMBER" }
+              },
+              required: ["name", "category", "expiryDate"]
+            }
+          }
+        };
+
+        const apiKey = ""; // Canvas manages this runtime
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+        const response = await fetchWithRetry(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        const jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (!jsonText) throw new Error("Risposta vuota da Gemini");
+
+        const parsedResult = JSON.parse(jsonText);
+        aiLoadingModal.classList.add('hidden');
+        openEditModalWithAIResult(parsedResult, prodImg, expImg);
+
+      } catch (err) {
+        console.error("AI Error:", err);
+        aiLoadingModal.classList.add('hidden');
+        showToast("Riconoscimento automatico fallito. Inserisci i dati manualmente.", "error");
+        
+        // Open form with fallback
+        openEditModalWithAIResult({
+          name: "Nuovo Alimento",
+          category: "frigo",
+          expiryDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+          quantity: "1 pz",
+          notes: "Verificare scadenza manualmente"
+        }, prodImg, expImg);
+      }
+    }
+
+    // Exponential backoff fetch
+    async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const res = await fetch(url, options);
+          if (res.ok) return res;
+          if (res.status === 429 || res.status >= 500) {
+            await new Promise(r => setTimeout(r, delay * Math.pow(2, i)));
+            continue;
+          }
+          return res;
+        } catch (e) {
+          if (i === retries - 1) throw e;
+          await new Promise(r => setTimeout(r, delay * Math.pow(2, i)));
+        }
+      }
+    }
+
+    // --- FORM & ITEM MANAGEMENT ---
+    function openEditModalWithAIResult(result, img1, img2) {
+      editingItemId = null;
+      modalFormTitle.innerText = "Conferma Prodotto Rilevato";
+      
+      inputItemName.value = result.name || "";
+      inputItemCategory.value = result.category || "frigo";
+      inputItemDate.value = result.expiryDate || new Date().toISOString().split('T')[0];
+      inputItemQuantity.value = result.quantity || "1 conf";
+      inputItemStatus.value = "sealed";
+      inputItemNotes.value = result.notes || "";
+
+      // Pictures
+      if (img1) {
+        formImg1.src = img1;
+        formImg1.classList.remove('hidden');
+        formImg1Placeholder.classList.add('hidden');
+      } else {
+        formImg1.src = "";
+        formImg1.classList.add('hidden');
+        formImg1Placeholder.classList.remove('hidden');
+      }
+
+      if (img2) {
+        formImg2.src = img2;
+        formImg2.classList.remove('hidden');
+        formImg2Placeholder.classList.add('hidden');
+      } else {
+        formImg2.src = "";
+        formImg2.classList.add('hidden');
+        formImg2Placeholder.classList.remove('hidden');
+      }
+
+      editItemModal.classList.remove('hidden');
+    }
+
+    function openManualAdd() {
+      editingItemId = null;
+      modalFormTitle.innerText = "Aggiungi Prodotto";
+      inputItemName.value = "";
+      inputItemCategory.value = "frigo";
+      inputItemDate.value = new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0];
+      inputItemQuantity.value = "1";
+      inputItemStatus.value = "sealed";
+      inputItemNotes.value = "";
+
+      formImg1.classList.add('hidden');
+      formImg1Placeholder.classList.remove('hidden');
+      formImg2.classList.add('hidden');
+      formImg2Placeholder.classList.remove('hidden');
+
+      editItemModal.classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+      editItemModal.classList.add('hidden');
+    }
+
+    function handleSaveItem() {
+      const name = inputItemName.value.trim();
+      const expiryDate = inputItemDate.value;
+      
+      if (!name) {
+        showToast("Inserisci il nome del cibo", "error");
+        return;
+      }
+      if (!expiryDate) {
+        showToast("Seleziona una data di scadenza valida", "error");
+        return;
+      }
+
+      const itemData = {
+        id: editingItemId || 'item_' + Date.now(),
+        name: name,
+        category: inputItemCategory.value,
+        expiryDate: expiryDate,
+        quantity: inputItemQuantity.value.trim() || '1',
+        status: inputItemStatus.value,
+        notes: inputItemNotes.value.trim(),
+        productImage: formImg1.src || null,
+        createdAt: new Date().toISOString()
+      };
+
+      if (editingItemId) {
+        const index = pantryItems.findIndex(i => i.id === editingItemId);
+        if (index !== -1) pantryItems[index] = itemData;
+        showToast("Prodotto aggiornato!", "success");
+      } else {
+        pantryItems.unshift(itemData);
+        showToast("Prodotto aggiunto alla dispensa!", "success");
+      }
+
+      savePantryToStorage();
+      closeEditModal();
+      renderItems();
+      updateStats();
+    }
+
+    function editItem(id) {
+      const item = pantryItems.find(i => i.id === id);
+      if (!item) return;
+
+      editingItemId = item.id;
+      modalFormTitle.innerText = "Modifica Prodotto";
+      inputItemName.value = item.name;
+      inputItemCategory.value = item.category;
+      inputItemDate.value = item.expiryDate;
+      inputItemQuantity.value = item.quantity;
+      inputItemStatus.value = item.status || "sealed";
+      inputItemNotes.value = item.notes || "";
+
+      if (item.productImage) {
+        formImg1.src = item.productImage;
+        formImg1.classList.remove('hidden');
+        formImg1Placeholder.classList.add('hidden');
+      } else {
+        formImg1.classList.add('hidden');
+        formImg1Placeholder.classList.remove('hidden');
+      }
+      formImg2.classList.add('hidden');
+      formImg2Placeholder.classList.remove('hidden');
+
+      editItemModal.classList.remove('hidden');
+    }
+
+    function deleteItem(id) {
+      pantryItems = pantryItems.filter(i => i.id !== id);
+      savePantryToStorage();
+      renderItems();
+      updateStats();
+      showToast("Prodotto rimosso", "success");
+    }
+
+    function consumeItem(id) {
+      const item = pantryItems.find(i => i.id === id);
+      if (!item) return;
+      deleteItem(id);
+      showToast(`Hai consumato: ${item.name}! 😋`, "success");
+    }
+
+    // --- RENDERING & UI CALCULATIONS ---
+    function getDaysDiff(dateString) {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      const target = new Date(dateString);
+      target.setHours(0, 0, 0, 0);
+      const diffTime = target - now;
+      return Math.round(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    function getExpiryBadge(days) {
+      if (days < 0) {
+        return {
+          text: `Scaduto (${Math.abs(days)}gg fa)`,
+          color: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
+          dot: 'bg-rose-500',
+          type: 'expired'
+        };
+      } else if (days === 0) {
+        return {
+          text: 'Scade OGGI!',
+          color: 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse',
+          dot: 'bg-amber-400',
+          type: 'expiring'
+        };
+      } else if (days <= 3) {
+        return {
+          text: `Scade tra ${days} gg`,
+          color: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+          dot: 'bg-amber-400',
+          type: 'expiring'
+        };
+      } else {
+        return {
+          text: `${days} giorni rimanenti`,
+          color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+          dot: 'bg-emerald-400',
+          type: 'fresh'
+        };
+      }
+    }
+
+    function getCategoryEmoji(cat) {
+      switch (cat) {
+        case 'frigo': return '🧊 Frigo';
+        case 'dispensa': return '🥫 Dispensa';
+        case 'freezer': return '❄️ Freezer';
+        default: return '📦 Altro';
+      }
+    }
+
+    function renderItems() {
+      itemsContainer.innerHTML = '';
+
+      // Filter logic
+      const filtered = pantryItems.filter(item => {
+        const matchesSearch = item.name.toLowerCase().includes(searchQuery) ||
+                              (item.notes && item.notes.toLowerCase().includes(searchQuery));
+        if (!matchesSearch) return false;
+
+        const days = getDaysDiff(item.expiryDate);
+        if (currentFilter === 'all') return true;
+        if (currentFilter === 'expiring') return days <= 3 && days >= 0;
+        if (currentFilter === 'expired') return days < 0;
+        return item.category === currentFilter;
+      });
+
+      // Sort: closest expiry first
+      filtered.sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+
+      if (filtered.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      } else {
+        emptyState.classList.add('hidden');
+      }
+
+      filtered.forEach(item => {
+        const days = getDaysDiff(item.expiryDate);
+        const badge = getExpiryBadge(days);
+        const card = document.createElement('div');
+        card.className = "bg-slate-900/90 border border-slate-800 hover:border-slate-700/80 rounded-2xl p-3.5 transition flex flex-col gap-2.5 shadow-sm";
+
+        card.innerHTML = `
+          <div class="flex items-start gap-3">
+            <!-- Product Avatar / Image -->
+            <div class="w-14 h-14 rounded-xl bg-slate-800 border border-slate-700 overflow-hidden flex-shrink-0 flex items-center justify-center">
+              ${item.productImage 
+                ? `<img src="${item.productImage}" class="w-full h-full object-cover" alt="${item.name}">` 
+                : `<i class="fa-solid fa-utensils text-slate-500 text-lg"></i>`
+              }
+            </div>
+
+            <!-- Info -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-1">
+                <h4 class="text-sm font-bold text-white truncate">${item.name}</h4>
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border ${badge.color} whitespace-nowrap flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full ${badge.dot}"></span> ${badge.text}
+                </span>
+              </div>
+              <div class="flex items-center gap-2 mt-1 text-[11px] text-slate-400">
+                <span>${getCategoryEmoji(item.category)}</span>
+                <span>•</span>
+                <span>${item.quantity || '1 conf'}</span>
+                ${item.status === 'opened' ? `<span class="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 text-[10px] border border-amber-500/20">Aperto</span>` : ''}
+              </div>
+              ${item.notes ? `<p class="text-[11px] text-slate-400 mt-1 truncate"><i class="fa-solid fa-info-circle text-[10px] text-emerald-400 mr-1"></i>${item.notes}</p>` : ''}
+            </div>
+          </div>
+
+          <!-- Bottom Actions -->
+          <div class="flex items-center justify-between pt-2 border-t border-slate-800/60 text-xs">
+            <span class="text-[11px] text-slate-500 font-medium">Scadenza: <strong class="text-slate-300">${formatDate(item.expiryDate)}</strong></span>
+            <div class="flex items-center gap-1">
+              <button onclick="consumeItem('${item.id}')" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[11px] font-semibold active:scale-95 transition flex items-center gap-1">
+                <i class="fa-solid fa-check"></i> Consuma
+              </button>
+              <button onclick="editItem('${item.id}')" class="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition">
+                <i class="fa-solid fa-pencil text-xs"></i>
+              </button>
+              <button onclick="deleteItem('${item.id}')" class="p-1.5 rounded-lg bg-slate-800 text-rose-400 hover:text-rose-300 transition">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+              </button>
+            </div>
+          </div>
+        `;
+
+        itemsContainer.appendChild(card);
+      });
+    }
+
+    function updateStats() {
+      statTotal.innerText = pantryItems.length;
+      let expiringCount = 0;
+      let expiredCount = 0;
+
+      pantryItems.forEach(item => {
+        const days = getDaysDiff(item.expiryDate);
+        if (days < 0) expiredCount++;
+        else if (days <= 3) expiringCount++;
+      });
+
+      statExpiring.innerText = expiringCount;
+      statExpired.innerText = expiredCount;
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return "-";
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+      return dateStr;
+    }
+
+    // --- RECIPES ANTI-WASTE AI ENGINE ---
+    async function openRecipeModal() {
+      recipeModal.classList.remove('hidden');
+      if (pantryItems.length === 0) {
+        recipeContentArea.innerHTML = `
+          <div class="text-center py-12 text-slate-500 space-y-2">
+            <i class="fa-solid fa-carrot text-3xl"></i>
+            <p class="text-xs">Aggiungi qualche prodotto per farti suggerire ricette intelligenti!</p>
+          </div>
+        `;
+        return;
+      }
+      await generateAntiWasteRecipes();
+    }
+
+    async function generateAntiWasteRecipes() {
+      recipeContentArea.innerHTML = `
+        <div class="py-12 flex flex-col items-center justify-center space-y-3">
+          <div class="w-10 h-10 border-4 border-amber-500/20 border-t-amber-400 rounded-full animate-spin"></div>
+          <p class="text-xs text-amber-400 font-medium">Lo chef sta creando ricette coi cibi più urgenti...</p>
+        </div>
+      `;
+
+      try {
+        // Collect food names prioritising close expirations
+        const sorted = [...pantryItems].sort((a,b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+        const foodList = sorted.map(i => `${i.name} (scade tra ${getDaysDiff(i.expiryDate)} gg)`).slice(0, 10).join(', ');
+
+        const prompt = `Sei uno chef stellato specializzato nella cucina antispreco italiana.
+Nel mio frigo e nella mia dispensa ho questi ingredienti disponibili:
+${foodList}
+
+Genera 2 o 3 ricette veloci e creative, dando assoluta priorità agli ingredienti che scadono prima.
+Restituisci un array JSON di oggetti con:
+- "title": Nome invitante della ricetta.
+- "time": Tempo di preparazione (es. "15 min").
+- "difficulty": "Facile", "Media".
+- "usedIngredients": lista di stringhe con gli ingredienti usati dal frigo.
+- "steps": lista di 3 o 4 passaggi brevi e chiari.`;
+
+        const payload = {
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  title: { type: "STRING" },
+                  time: { type: "STRING" },
+                  difficulty: { type: "STRING" },
+                  usedIngredients: { type: "ARRAY", items: { type: "STRING" } },
+                  steps: { type: "ARRAY", items: { type: "STRING" } }
+                },
+                required: ["title", "time", "steps", "usedIngredients"]
+              }
+            }
+          }
+        };
+
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+        const response = await fetchWithRetry(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        const recipes = JSON.parse(data.candidates[0].content.parts[0].text);
+
+        renderRecipes(recipes);
+      } catch (err) {
+        console.error("Recipe AI Error:", err);
+        recipeContentArea.innerHTML = `
+          <div class="text-center py-10 text-rose-400 space-y-2">
+            <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+            <p class="text-xs">Impossibile generare le ricette al momento. Riprova tra poco.</p>
+          </div>
+        `;
+      }
+    }
+
+    function renderRecipes(recipes) {
+      recipeContentArea.innerHTML = '';
+      recipes.forEach((rec, idx) => {
+        const card = document.createElement('div');
+        card.className = "bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-md";
+        card.innerHTML = `
+          <div class="flex items-start justify-between">
+            <div>
+              <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+                Ricetta #${idx+1}
+              </span>
+              <h4 class="text-sm font-bold text-white mt-1">${rec.title}</h4>
+            </div>
+            <span class="text-xs text-slate-400 flex items-center gap-1">
+              <i class="fa-regular fa-clock text-[10px]"></i> ${rec.time}
+            </span>
+          </div>
+
+          <div>
+            <span class="text-[11px] font-semibold text-slate-400 block mb-1">Ingredienti salvati:</span>
+            <div class="flex flex-wrap gap-1">
+              ${rec.usedIngredients.map(ing => `<span class="text-[10px] bg-slate-800 text-emerald-300 px-2 py-0.5 rounded-md border border-slate-700">${ing}</span>`).join('')}
+            </div>
+          </div>
+
+          <div class="space-y-1.5 pt-2 border-t border-slate-800/80">
+            <span class="text-[11px] font-semibold text-slate-400 block">Preparazione:</span>
+            <ol class="space-y-1 text-xs text-slate-300 list-decimal list-inside">
+              ${rec.steps.map(step => `<li class="leading-relaxed">${step}</li>`).join('')}
+            </ol>
+          </div>
+        `;
+        recipeContentArea.appendChild(card);
+      });
+    }
+
+    // --- STORAGE & TOAST ---
+    function savePantryToStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(pantryItems));
+      } catch (e) {
+        console.warn("Storage quota exceeded, removing photos for persistence");
+        // Remove heavy photos to ensure text data is safe
+        const lightweight = pantryItems.map(item => ({ ...item, productImage: null }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(lightweight));
+      }
+    }
+
+    function loadPantryFromStorage() {
+      const data = localStorage.getItem(STORAGE_KEY);
+      if (data) {
+        try {
+          pantryItems = JSON.parse(data);
+        } catch (e) {
+          pantryItems = [];
+        }
+      } else {
+        // Sample starter items
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const inThreeDays = new Date(today);
+        inThreeDays.setDate(inThreeDays.getDate() + 3);
+        const inTwoWeeks = new Date(today);
+        inTwoWeeks.setDate(inTwoWeeks.getDate() + 14);
+
+        pantryItems = [
+          {
+            id: 'demo_1',
+            name: 'Latte Parzialmente Scremato',
+            category: 'frigo',
+            expiryDate: tomorrow.toISOString().split('T')[0],
+            quantity: '1 Litro',
+            status: 'opened',
+            notes: 'Aperto ieri sera',
+            productImage: null,
+            createdAt: today.toISOString()
+          },
+          {
+            id: 'demo_2',
+            name: 'Mozzarella di Bufala',
+            category: 'frigo',
+            expiryDate: inThreeDays.toISOString().split('T')[0],
+            quantity: '250g',
+            status: 'sealed',
+            notes: 'Tenere a +4°C nel proprio liquido',
+            productImage: null,
+            createdAt: today.toISOString()
+          },
+          {
+            id: 'demo_3',
+            name: 'Pasta Spaghetti n.5',
+            category: 'dispensa',
+            expiryDate: inTwoWeeks.toISOString().split('T')[0],
+            quantity: '500g',
+            status: 'sealed',
+            notes: 'Conservare in luogo asciutto',
+            productImage: null,
+            createdAt: today.toISOString()
+          }
+        ];
+        savePantryToStorage();
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      const toastIcon = document.getElementById('toastIcon');
+
+      toastMsg.innerText = message;
+      if (type === 'error') {
+        toastIcon.className = "fa-solid fa-triangle-exclamation text-rose-400";
+      } else if (type === 'success') {
+        toastIcon.className = "fa-solid fa-circle-check text-emerald-400";
+      } else {
+        toastIcon.className = "fa-solid fa-circle-info text-blue-400";
+      }
+
+      toast.classList.remove('opacity-0', '-translate-y-4');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-4');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
